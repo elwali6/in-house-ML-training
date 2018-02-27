@@ -1,0 +1,234 @@
+---
+title: "Lab: Linear Regression"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+___________________________________________________________________________________________________________
+
+## Simple Linear Regression
+
+The MASS library contains the Boston data set, which records medv (median
+house value) for 506 neighborhoods around Boston. We will seek to predict
+medv using 13 predictors such as rm (average number of rooms per house),
+age (average age of houses), and lstat (percent of households with low
+socioeconomic status).
+
+```{r}
+library(MASS)
+data(Boston)
+names(Boston)
+```
+
+To find out more about the data set, we can type ?Boston.
+We will start by using the lm() function to fit a simple linear regression lm() model, with medv as the response and lstat as the predictor. The basic
+syntax is lm(y~ x,data), where y is the response, x is the predictor, and
+data is the data set in which these two variables are kept.
+
+
+```{r}
+lm.fit=lm(medv ~ lstat)
+```
+The command causes an error because R does not know where to find
+the variables medv and lstat. The next line tells R that the variables are
+in Boston. If we attach Boston, the first line works fine because R now
+recognizes the variables.
+
+```{r}
+lm.fit=lm(medv ~ lstat , data=Boston)
+attach(Boston)
+lm.fit=lm(medv ~ lstat)
+```
+
+If we type `lm.fit`, some basic information about the model is output.
+For more detailed information, we use `summary(lm.fit)`. This gives us `p-values`
+and standard errors for the coefficients, as well as the `R^2` statistic
+and `F-statistic`  for the model.
+
+```{r}
+lm.fit
+```
+of run the summary function 
+
+```{r}
+summary (lm.fit)
+```
+We can use the names() function in order to find out what other pieces of information are stored in `lm.fit`. Although we can extract these quantities
+by name e.g. `lm.fit$coefficients` it is safer to use the extractor
+functions like coef() to access them.
+
+```{r}
+names(lm.fit)
+```
+In order to obtain a confidence interval for the coefficient estimates, we can
+use the `confint()` command.
+```{r}
+confint (lm.fit)
+```
+
+The predict() function can be used to produce confidence intervals and predict() prediction intervals for the prediction of medv for a given value of lstat.
+
+```{r}
+predict (lm.fit , data.frame(lstat=c(5,10 ,15)), interval = "confidence")
+```
+
+```{r}
+predict (lm.fit ,data.frame(lstat=c(5,10 ,15)),interval ="prediction")
+```
+
+
+
+For instance, the 95 % confidence interval associated with a lstat value of
+10 is (24.47, 25.63), and the 95 % prediction interval is (12.82, 37.28). As
+expected, the confidence and prediction intervals are centered around the
+same point (a predicted value of 25.05 for medv when lstat equals 10), but
+the latter are substantially wider.
+
+We will now plot medv and lstat along with the least squares regression
+line using the plot() and abline() functions.
+
+
+```{r}
+plot(lstat ,medv)
+abline(lm.fit)
+```
+
+
+There is some evidence for non-linearity in the relationship between lstat
+and medv. We will explore this issue later in this lab.
+
+
+## Multiple Linear Regression
+
+In order to fit a multiple linear regression model using least squares, we
+again use the lm() function. The syntax `lm(y ~ x1+x2+x3)` is used to fit a
+model with three predictors, `x1`, `x2`, and `x3`. The `summary()` function now
+outputs the regression coefficients for all the predictors.
+
+```{r}
+lm.fit=lm(medv ~ lstat+age ,data=Boston )
+summary (lm.fit)
+```
+
+The Boston data set contains 13 variables, and so it would be cumbersome
+to have to type all of these in order to perform a regression using all of the
+predictors. Instead, we can use the following short-hand:
+
+```{r}
+lm.fit=lm(medv ~.,data=Boston)
+summary (lm.fit)
+```
+
+We can access the individual components of a summary object by name
+(type ?summary.lm to see what is available). 
+Hence summary(lm.fit) r.sq gives us the $R^2$, and summary(lm.fit)$sigma gives us the RSE. The vif() function, part of the car package, can be used to compute variance inflation factors. Most VIF  are low to moderate for this data. The car package is not part of the base R installation so it must be downloaded the first time you use it via the install.packages option in R.
+
+```{r}
+library (car)
+vif(lm.fit)
+
+```
+
+What if we would like to perform a regression using all of the variables but
+one? For example, in the above regression output, age has a high p-value.
+So we may wish to run a regression excluding this predictor. The following
+syntax results in a regression using all predictors except age.
+
+```{r}
+lm.fit1=lm(medv ~.-age ,data=Boston )
+summary (lm.fit1)
+
+```
+### Interaction Terms
+
+It is easy to include interaction terms in a linear model using the lm() function.
+
+The syntax lstat:black tells R to include an interaction term between
+lstat and black. The syntax lstat*age simultaneously includes lstat, age,
+and the interaction term lstat:age as predictors; it is a shorthand for
+lstat+age+lstat:age.
+
+```{r}
+set.seed(1)
+model_lstat_age  <- lm(medv ~ lstat*age ,data=Boston)
+summary (model_lstat_age)
+```
+### What does the coefficients means:
+
+* `(Intercept)`: With 0 increase in `lstat` and with 0 increase in `age` the `medv` will be $`r coef(model_lstat_age)[1]`$  
+
+* `lstat`: an increase in `lstat` by 1 at zero increase in  `age`  increase `medv` by $`r coef(model_lstat_age)[2]`$.
+
+* `age`: an increase in `age` by 1 at zero `lstat` decreases `medv` by $`r coef(model_lstat_age)[3]`$
+
+* `lstat`:`age`: the effect of `lstat` on `medv` increases by $`r coef(model_lstat_age)[4]`$ for every 1 unit increase in `age`.
+
+
+## Non-linear Transformations of the Predictors
+
+The lm() function can also accommodate non-linear transformations of the predictors. For instance, given a predictor X, we can create a predictor $X^2$ using $I(X^2)$. The function $I()$ is needed since the $^$ has a special meaning $I()$ in a formula; wrapping as we do allows the standard usage in R, which is
+to raise X to the power 2. We now perform a regression of medv onto lstat and $lstat^2$.
+
+```{r}
+lm.fit2=lm(medv ~ lstat+I(lstat^2))
+summary (lm.fit2)
+
+```
+
+The near-zero p-value associated with the quadratic term suggests that
+it leads to an improved model. We use the anova() function to further quantify the extent to which the quadratic fit is superior to the linear fit.
+
+
+```{r}
+lm.fit=lm(medv~ lstat)
+anova(lm.fit ,lm.fit2)
+```
+
+Here Model 1 represents the linear submodel containing only one predictor,
+lstat, while Model 2 corresponds to the larger quadratic model that has two
+predictors, lstat and lstat2. The anova() function performs a hypothesis
+test comparing the two models. The null hypothesis is that the two models
+fit the data equally well, and the alternative hypothesis is that the full
+model is superior. Here the F-statistic is 135 and the associated p-value is
+virtually zero. This provides very clear evidence that the model containing
+the predictors lstat and lstat2 is far superior to the model that only
+contains the predictor lstat. This is not surprising, since earlier we saw
+evidence for non-linearity in the relationship between medv and lstat. If we type
+
+
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit2)
+plot(lm.fit)
+```
+
+then we see that when the lstat2 term is included in the model, there is little discernible pattern in the residuals.
+In order to create a cubic fit, we can include a predictor of the form $I(X^3)$. However, this approach can start to get cumbersome for higherorder polynomials. A better approach involves using the $poly()$ function poly() to create the polynomial within lm(). For example, the following command produces a fifth-order polynomial fit:
+
+```{r}
+lm.fit5=lm(medv ~ poly(lstat ,5))
+summary (lm.fit5)
+```
+
+we are in no way restricted to using polynomial transformations
+of the predictors. Here we try a log transformation.
+
+```{r}
+summary (lm(medv ~ log(rm),data=Boston))
+```
+
+
+
+## Qualitative Predictors
+

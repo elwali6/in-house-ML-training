@@ -1,0 +1,50 @@
+---
+title: "Cursus Machine Learning"
+author: "Hicham Zmarrou"
+date: "Trainer/Data Scientist <br /> <br />"
+output:
+  ioslides_presentation:
+    standalone: no
+    transition: default
+    widescreen: yes
+  slidy_presentation: default
+recording: none
+subtitle: Day 02
+css: styles.css
+type: invited
+venue: ITViate data science courses
+logo: img/Tridata.png
+---
+
+
+```{r setup, echo = FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 4,
+  comment = "#>",
+  collapse = TRUE,
+  warning = FALSE
+)
+```
+
+
+
+## **You will learn:**
+
+
+After completing this lesson you will know how to assess:
+
+1. Is there a relationship between the predictors and the target? 
+
+2. How strong is the relationship between the predictors and the target?
+
+3. Which predictors contribute to the value of the target?
+
+4. How accurately can we estimate the effect of each predictors on the target?
+
+5. How accurately can we predict future value od the target?
+
+6. Is the relationship linear?
+
+7. Is there synergy/interaction among the predictors?

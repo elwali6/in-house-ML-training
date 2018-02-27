@@ -1,0 +1,184 @@
+---
+title: "Solutions Q8, Q9 and Q10 from Chapter 3 ISLR"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+
+References
+
+Textbook: Introduction to statistical learning, Chapter 3, p. 121
+
+## Applied
+
+**Q8.** This question involves the use of simple linear regression on the "Auto" data set.
+
+(a) Use the `lm()` function to perform a simple linear regression with "mpg" as the response and "horsepower" as the predictor. Use the `summary()` function to print the results. Comment on the output. For example :
+
+i. Is there a relationship between the predictor and the response ?
+
+```{r}
+library(ISLR)
+data(Auto)
+fit <- lm(mpg ~ horsepower, data = Auto)
+summary(fit)
+```
+
+*We can answer this question by testing the hypothesis $H_0 : \beta_i = 0\ \forall i$. The p-value corresponding to the F-statistic is `r as.numeric(pf(summary(fit)$fstatistic[1], summary(fit)$fstatistic[2], summary(fit)$fstatistic[3], lower.tail = F))`, this indicates a clear evidence of a relationship between "mpg" and "horsepower".*
+
+ii. How strong is the relationship between the predictor and the response ?
+
+*To calculate the residual error relative to the response we use the mean of the response and the RSE. The mean of mpg is `r mean(Auto$mpg)`. The RSE of the lm.fit was `r summary(fit)$sigma` which indicates a percentage error of `r summary(fit)$sigma / mean(Auto$mpg) * 100`%. We may also note that as the $R^2$ is equal to `r summary(fit)$r.sq`, almost `r summary(fit)$r.sq * 100`% of the variability in "mpg" can be explained using "horsepower".*
+
+iii. Is the relationship between the predictor and the response positive or negative ?
+
+*As the coeficient of "horsepower" is negative, the relationship is also negative. The more horsepower an automobile has the linear regression indicates the less mpg fuel efficiency the automobile will have.*
+
+iv. What is the predicted $mpg$ associated with a "horsepower" of 98 ? What are the associated 95% confidence and prediction intervals ?
+
+```{r}
+predict(fit, data.frame(horsepower = 98), interval = "confidence")
+predict(fit, data.frame(horsepower = 98), interval = "prediction")
+```
+
+(b) Plot the response and the predictor. Use the abline() function to display the least squares regression line.
+
+```{r}
+plot(Auto$horsepower, Auto$mpg, main = "Scatterplot of mpg vs. horsepower", xlab = "horsepower", ylab = "mpg", col = "blue")
+abline(fit, col = "red")
+```
+
+(c) Use the plot() function to produce diagnostic plots of the least squares regression fit. Comment on any problems you see with the fit.
+
+```{r}
+par(mfrow = c(2, 2))
+plot(fit)
+```
+
+*The plot of residuals versus fitted values indicates the presence of non linearity in the data. The plot of standardized residuals versus leverage indicates the presence of a few outliers (higher than 2 or lower than -2) and a few high leverage points.*
+
+**Q9.** This question involves the use of multiple linear regression on the "Auto" data set.
+
+(a) Produce a scatterplot matrix which include all the variables in the data set.
+
+```{r}
+pairs(Auto)
+```
+
+(b) Compute the matrix of correlations between the variables using the function cor(). You will need to exclude the "name" variable, which is qualitative.
+
+```{r}
+names(Auto)
+cor(Auto[1:8])
+```
+
+(c) Use the `lm()` function to perform a multiple linear regression with "mpg" as the response and all other variables except "name" as the predictors. Use the `summary()` function to print the results. Comment on the output. For instance :
+
+i. Is there a relationship between the predictors and the response ?
+
+```{r}
+fit2 <- lm(mpg ~ . - name, data = Auto)
+summary(fit2)
+```
+
+* We can answer this question by again testing the hypothesis $H_0 : \beta_i = 0\ \forall i$. The p-value corresponding to the F-statistic is `r round(as.numeric(pf(summary(fit2)$fstatistic[1], summary(fit2)$fstatistic[2], summary(fit2)$fstatistic[3], lower.tail = F)),2)`, this indicates a clear evidence of a relationship between "mpg" and the other predictors.*
+
+ii. Which predictors appear to have a statistically significant relationship to the response ?
+
+* We can answer this question by checking the p-values associated with each predictor's t-statistic. We may conclude that all predictors are statistically significant except "cylinders", "horsepower" and "acceleration".*
+
+iii. What does the coefficient for the "year" variable suggest ?
+
+*The coefficient ot the "year" variable suggests that the average effect of an increase of 1 year is an increase of `r summary(fit2)$coef[7, 1]` in "mpg" (all other predictors remaining constant). In other words, cars become more fuel efficient every year by almost 1 mpg / year.*
+
+(d) Use the plot() function to produce diagnostic plots of the linear regression fit. Comment on any problems you see with the fit. Do the residual plots suggest any unusually large outliers ? Does the leverage plots identify any observations with unusually high leverages ?
+
+```{r}
+par(mfrow = c(2, 2))
+plot(fit2)
+```
+
+*As before, the plot of residuals versus fitted values indicates the presence of mild non linearity in the data. The plot of standardized residuals versus leverage indicates the presence of a few outliers (higher than 2 or lower than -2) and one high leverage point (point 14).*
+
+(e) Use the * and : symbols to fit linear regression models with interaction effects. Do any interactions appear to be statistically significant ?
+
+*From the correlation matrix, we obtained the two highest correlated pairs and used them in picking interaction effects.*
+
+```{r}
+fit3 <- lm(mpg ~ cylinders * displacement+displacement * weight, data = Auto[, 1:8])
+summary(fit3)
+```
+
+*From the p-values, we can see that the interaction between displacement and weight is statistically signifcant, while the interactiion between cylinders and displacement is not.*
+
+(f) Try a few different transformations of the variables, such as $\log{X}$, $\sqrt{X}$, $X^2$. Comment on your findings.
+
+```{r}
+par(mfrow = c(2, 2))
+plot(log(Auto$horsepower), Auto$mpg)
+plot(sqrt(Auto$horsepower), Auto$mpg)
+plot((Auto$horsepower)^2, Auto$mpg)
+```
+
+*We limit ourselves to examining "horsepower" as sole predictor. It seems that the log transformation gives the most linear looking plot.*
+
+**Q10.** This question should be answered using the "Carseats" data set.
+
+(a) Fit a multiple regression model to predict "Sales" using "Price", "Urban" and "US".
+
+```{r}
+data(Carseats)
+fit3 <- lm(Sales ~ Price + Urban + US, data = Carseats)
+summary(fit3)
+```
+
+(b) Provide an interpretation of each coefficient in the model. Be careful - some of the variables in the model are qualitative !
+
+*The coefficient of the "Price" variable may be interpreted by saying that the average effect of a price increase of 1 dollar is a decrease of `r abs(summary(fit3)$coef[2, 1]) * 1000` units in sales all other predictors remaining fixed. The coefficient of the "Urban" variable may be interpreted by saying that on average the unit sales in urban location are `r abs(summary(fit3)$coef[3, 1]) * 1000` units less than in rural location all other predictors remaining fixed. The coefficient of the "US" variable may be interpreted by saying that on average the unit sales in a US store are `r abs(summary(fit3)$coef[4, 1]) * 1000` units more than in a non US store all other predictors remaining fixed.*
+
+(c) Write out the model in equation form, being careful to handle the qualitative variables properly.
+
+*The model may be written as
+\[Sales = `r summary(fit3)$coef[1, 1]` + (`r summary(fit3)$coef[2, 1]`)\times Price + (`r summary(fit3)$coef[3, 1]`)\times Urban + (`r summary(fit3)$coef[4, 1]`)\times US + \varepsilon\]
+with $Urban = 1$ if the store is in an urban location and $0$ if not, and $US = 1$ if the store is in the US and $0$ if not.*
+
+(d) For which of the predictors can you reject the null hypothesis $H_0 : \beta_j = 0$ ?
+
+*We can reject the null hypothesis for the "Price" and "US" variables.*
+
+(e) On the basis of your response to the previous question, fit a smaller model that only uses the predictors for which there is evidence of association with the outcome.
+
+```{r}
+fit4 <- lm(Sales ~ Price + US, data = Carseats)
+summary(fit4)
+```
+
+(f) How well do the models in (a) and (e) fit the data ?
+
+*The $R^2$ for the smaller model is marginally better than for the bigger model. Essentially about `r summary(fit4)$r.sq * 100`% of the variability is explained by the model.*
+
+(g) Using the model from (e), obtain 95% confidence intervals for the coefficient(s).
+
+```{r}
+confint(fit4)
+```
+
+(h) Is there evidence of outliers or high leverage observations in the model from (e) ?
+
+```{r}
+par(mfrow = c(2, 2))
+plot(fit4)
+```
+
+*The plot of standardized residuals versus leverage indicates the presence of a few outliers (higher than 2 or lower than -2) and some leverage points as some points exceed $(p + 1)/n$ (`r (3 + 1) / 400`).*

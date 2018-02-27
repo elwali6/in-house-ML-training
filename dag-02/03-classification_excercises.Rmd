@@ -1,0 +1,244 @@
+---
+title: "Logistic regression: excercises"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='img/',
+                      echo=TRUE, warning=FALSE, message=FALSE,digits = 3)
+library(broom)
+```
+
+
+
+### Exercise 1
+Load the MASS package and combine Pima.tr and Pima.tr2 to a data.frame called train and save Pima.te as test. 
+Change the coding of our variable of interest to (type) to 0 (non-diabetic) and 1 (diabetic). Check for and take note of any missing values.
+
+```{r}
+library(MASS)
+library(ggplot2)
+
+train <- rbind(Pima.tr, Pima.tr2)
+test  <- Pima.te
+
+train$type <- as.integer(train$type) - 1L
+test$type <- as.integer(test$type) - 1L
+
+# Missing values?
+
+sapply(train, function(x) sum(is.na(x)))
+```
+
+
+
+### Exercise 2
+Take a look at the data. Plot a scatterplot matrix between all the explanatory variables using pairs(), and color code the dots according to diabetic classification. Furthermore, try to plot type as a function of age. Use jitter to make your graph more informative. Bonus: Can you add a logistic fit based on age on top of your plot?
+  
+```{r}
+library(GGally)
+#ggpairs(iris, aes(colour = Species, alpha = 0.4))
+pairs(subset(train, select = -c(type)), col = as.factor(train$type))
+#ggpairs(train, columns = 1:7, title = "",  colour = "type",
+#  axisLabels = "show", columnLabels = colnames(train[, columns]))
+```
+  
+```{r}
+library(ggplot2)
+ggplot(train, aes(x = age, y = type)) +
+  geom_jitter(width = 0.5, height = 0.03, alpha = .2) +
+  geom_smooth(method = "glm", se = FALSE,
+              method.args = list(family = "binomial")) +
+  labs(y = expression(hat(P)(Diabetic)))
+```
+  
+  
+  
+### Exercise 3
+
+Using the glm() and the train data fit a logistic model of type on age and bmi. Print out the coefficients and their p-value.
+
+```{r}
+library(broom)
+lg1 <- glm(type ~ age + bmi, data = train, family = binomial)
+#
+#summary(lg1)$coefficients[, c(1, 4)]
+tidy(lg1)
+```
+
+
+### Exercise 4
+What does the model fitted in exercise 3 predict in terms of probability for someone age 35 with bmi of 32, what about bmi of 22?
+  
+```{r}
+predict(lg1, type = "response",newdata = data.frame(bmi = c(32, 22), age = 35))
+broom::augment(x=lg1, newdata = data.frame(bmi = c(32, 22), age = 35), type.predict = "response")
+```
+
+Or manually define the logistic function
+
+```{r}
+# Or manually
+
+lgs_fun   <- function(par, x) {
+            1 / (1 + exp(-x %*% par)) # x %*% par is linear algebra equivalent of b_0 + b_1*age + b2*bmi
+    }
+
+lgs_fun(lg1$coefficients, c(1, 35, 32))
+##           [,1]
+## [1,] 0.3470908
+lgs_fun(lg1$coefficients, c(1, 35, 22))
+```
+
+
+### Exercise 5
+
+According to our model what are the odds that a woman in our sample is diabetic given age 55 and a bmi 37? Remember that odds in this context have a very precise definition which is different from probability.
+
+```{r}
+exp(predict(lg1, response = "link", newdata = data.frame(age = 55, bmi = 37)))
+```
+ Or literally
+
+```{r}
+lgs_fun(lg1$coefficients, c(1, 55, 37)) / (1 - lgs_fun(lg1$coefficients, c(1, 55, 37)))
+# or simply 
+exp(c(1, 55, 37) %*% lg1$coefficients)
+
+```
+
+### Exercise 6
+Build the confusion matrix, a table of actual diabetic classification against model prediction. Use a cutoff value of 0.5, meaning that women who the model estimates to have at least 0.5 chance of being diabetic are predicted to be diabetic. What is the prediction accuracy?
+
+
+```{r}
+library(caret)
+library(InformationValue)
+# Remember data is not complete ... we have missing values for bmi...
+cm1 <- table(train$type[!is.na(train$bmi)], predict(lg1, type = "response") >= 0.5)
+cm1
+# Prediction accuracy
+sum(diag(cm1)) / sum(cm1) 
+# sensitivity or recall
+sensitivity(actuals = train$type[!is.na(train$bmi)], predictedScores = predict(lg1, type = "response") >= 0.5)
+```
+  
+
+### Exercise 7
+Apply the fitted model to the test set. Print the confusion matrix and prediction accuracy.
+
+```{r}
+# Check test set for missing values
+
+sapply(test, function(x) sum(is.na(x))) 
+```
+```{r}
+# Get predictions
+
+test_pred <- predict(lg1, type = "response", newdata = test)
+```
+
+Or manually
+```{r}
+test_predm <- lgs_fun(lg1$coefficients, as.matrix(cbind(1, test[, c("age", "bmi")])))
+
+cm1_test <- table(test$type,
+                  test_pred >= 0.5)
+
+cm1_test
+```
+```{r}
+# Prediction accuracy
+
+sum(diag(cm1_test)) / sum(cm1_test) 
+```
+
+
+```{r}
+library(caret)
+cm2_test = table(predicted = as.numeric(test_pred >= 0.5), actual = test$type)
+train_con_mat = confusionMatrix(cm2_test)
+c(train_con_mat$overall["Accuracy"], 
+  train_con_mat$byClass["Sensitivity"], 
+  train_con_mat$byClass["Specificity"])
+```
+
+
+### Exercise 8
+Draw up the ROC curve and calculate the AUC.
+
+```{r}
+library(ROCR) 
+# first install.packages("ROCR")
+
+## Warning: package 'ROCR' was built under R version 3.4.2
+# ROC curve
+
+predROCR <- prediction(test_predm, test$type)
+perfROCR <- performance(predROCR, "tpr", "fpr")
+plot(perfROCR, colorize = TRUE)
+
+
+```
+
+
+
+```{r}
+# Compute AUC
+
+performance(predROCR, "auc")@y.values
+```
+
+
+### Exercise 9
+Add number of pregnancies and age squared as an explanatory variables and redraw the ROC curve on the test set and calculate its AUC.
+
+```{r}
+lg2 <- glm(type ~ age + bmi + npreg, data = train, x = TRUE, family = binomial)
+
+test_pred <- predict(lg2, type = "response", newdata = test)
+predROCR <- prediction(test_pred, test$type)
+perfROCR <- performance(predROCR, "tpr", "fpr")
+plot(perfROCR, colorize = TRUE)
+```
+
+
+```{r}
+performance(predROCR, "auc")@y.values
+```
+
+### Exercise 10
+For a woman aged 35 and mother of 2 children, by how much does the probability of diabetes increase, if her bmi was 35 instead of 25 according to the model? What about the marginal effect at bmi = 25?
+
+
+```{r}
+ex10data <- data.frame(age = 35, bmi = c(25, 35), npreg = 2)
+diff(predict(lg2, type = "response", newdata = ex10data)) 
+
+diff(predict(lg2, type = "response", newdata = ex10data)) /
+  predict(lg2, type = "response", newdata = ex10data)[1] 
+# Marginal effect at the age = 35, bmi = 25, npreg = 2
+
+p <- lgs_fun(lg2$coefficients, c(1, 35, 25, 2))
+p*(1 - p)*lg2$coefficients[3] 
+```
+
+
+
+
+
+
