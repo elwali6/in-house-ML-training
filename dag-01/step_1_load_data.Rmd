@@ -1,5 +1,5 @@
 ---
-title: "How To Load Machine Learning Data"
+title: "Lab: Linear Regression"
 author: "Hicham Zmarrou"
 date: "`r Sys.Date()`"
 output:
@@ -17,142 +17,41 @@ output:
 ---
 ___________________________________________________________________________________________________________
 
-You must be able to load your data before you can start your machine learning project. Data can be stored in flat files such us `CSV`, `txt`, etc or  `Excel`, `SPSS`, `Stata`, `SAS` files or in database (e.g MySQl, SQLite, RPostgreSQL). In this lesson you will learn how to load these different type of data in R.
 
-## Load data in R  
-
-In order to load flat files  in R we use the `readr` package which is a part of `tidyverse` a collection of packages designed for data science.
-
-Most of readr’s functions are concerned with turning flat files into data frames:
-
-### Load flat files (CSV)
-
-`read_csv()` reads comma delimited files, `read_csv2()` reads semicolon separated files (common in countries where , is used as the decimal place), `read_tsv()` reads tab delimited files, and `read_delim()` reads in files with any delimiter.
-
-`read_fwf()` reads fixed width files. You can specify fields either by their widths with `fwf_widths()` or their position with `fwf_positions()` . `read_table()`  reads a common variation of fixed width files where columns are separated by white space.
-
-`read_log()`  reads Apache style log files. (But also check out webreadr which is built on top of `read_log()`  and provides many more helpful tools.)
-
-These functions all have similar syntax: once you’ve mastered one, you can use the others with ease. For the rest of this chapter we’ll focus on `read_csv()` . Not only are csv files one of the most common forms of data storage, but once you understand `read_csv()` , you can easily apply your knowledge to all the other functions in readr.
-
-The first argument to `read_csv()`  is the most important: it’s the path to the file to read.
-Load all packages we will need 
+The MASS library contains the Boston data set, which records medv (median
+house value) for 506 neighborhoods around Boston. We will seek to predict
+medv using 13 predictors such as rm (average number of rooms per house),
+age (average age of houses), and lstat (percent of households with low
+socioeconomic status).
 
 ```{r}
-# install.packages(c("dbplyr", "RSQLite"))
-suppressMessages(library(tidyverse))
-suppressMessages(library(haven))
-suppressMessages(library(dbplyr))
-suppressMessages(library(RSQLite))
+library(MASS)
+data(Boston)
+names(Boston)
 ```
 
-Load the csv file. 
-```{r}
-data <- read_csv("./data/pima_indians_diabetes.csv", col_names = FALSE)
-names <- c('preg', 'plas', 'pres', 'skin', 'test', 'mass', 'pedi', 'age', 'class')
-names(data) <- names
-```
-
-### Load SAS, SPSS and STATA files 
-
-`haven` enables `R` to read and write various data formats used by other statistical packages by wrapping the fantastic ReadStat C library written by Evan Miller. Haven is part of the tidyverse. Currently it supports:
-
-+ SAS: `read_sas()` reads `.sas7bdat` + `.sas7bcat` files and `read_xpt()` reads SAS transport files (version 5 and version 8). `write_sas()` writes `.sas7bdat` files.
-
-+ SPSS: `read_sav()` reads `.sav` files and `read_por()` reads the older .por files. `write_sav()` writes `.sav` files.
-
-+ Stata: `read_dta()` reads `.dta` files (up to version 14). `write_dta()` writes `.dta` files (versions 8-14).
-
+To find out more about the data set, we can type ?Boston.
+We will start by using the lm() function to fit a simple linear regression lm() model, with medv as the response and lstat as the predictor. The basic
+syntax is lm(y∼x,data), where y is the response, x is the predictor, and
+data is the data set in which these two variables are kept.
 
 
 ```{r}
-# SAS
-write_sas(mtcars, "./data/mtcars.sas7bdat")
-# Stata
-write_dta(mtcars, "./data/mtcars.dta")
-# SPSS
-write_sav(mtcars, "./data/mtcars.sav")
+lm.fit=lm(medv∼lstat)
 ```
-
-
-For reading in data sets we have the following functions:
+The command causes an error because R does not know where to find
+the variables medv and lstat. The next line tells R that the variables are
+in Boston. If we attach Boston, the first line works fine because R now
+recognizes the variables.
 
 ```{r}
-# SAS
-read_sas("./data/mtcars.sas7bdat")
-# Stata
-read_dta("./data/mtcars.dta")
-# SPSS
-read_sav("./data/mtcars.sav")
+lm.fit=lm(medv∼lstat , data=Boston)
+attach(Boston)
+lm.fit=lm(medv∼lstat)
 ```
 
-
-### Load from an SQL database 
-
-R can connect to almost any existing database type. Most common database types have R packages that allow you to connect to them (e.g., RSQLite, RMySQL, etc). Furthermore, the dplyr package you used in the previous chapter, in conjunction with dbplyr supports connecting to the widely-used open source databases sqlite, mysql and postgresql, as well as Google’s bigquery, and it can also be extended to other database types (a vignette in the dplyr package explains how to do it). RStudio has created a website that provides documentation and best practices to work on database interface
-
-
-```{r}
-suppressMessages(library(dplyr)
-suppressMessages(library(dbplyr)
-# download.file(url = "https://ndownloader.figshare.com/files/2292171",
-#               destfile = "data/portal_mammals.sqlite", mode = "wb")
-mammals <- DBI::dbConnect(RSQLite::SQLite(), "data/portal_mammals.sqlite")
-
-#  mammals <- DBI::dbConnect(RMySQL::MySQL(), 
-#  host = "your_host",
-#  user = "your_name",
-#  password = ("Database password")
-#)
-```
-
-Let’s take a closer look at the mammals database we just connected to:
-
-```{r}
-
-src_dbi(mammals)
-
-```
-
-
-#### Querying the database with the dplyr syntax
-
-One of the strengths of dplyr is that the same operation can be done using dplyr’s verbs instead of writing SQL. First, we select the table on which to do the operations by creating the surveys object, and then we use the standard dplyr syntax as if it were a data frame:
-
-```{r} 
-surveys <- tbl(mammals, "surveys")
-
-surveys %>%
-    select(year, species_id, plot_id)
-``` 
-
-In this case, the surveys object behaves like a data frame. Several functions that can be used with data frames can also be used on tables from a database. For instance, the head() function can be used to check the first 10 rows of the table:
-
-```{r}
-head(surveys, n = 10)
-```
-
-## Summary
-
-In this lesson  you discovered how to load your machine learning data in R. You learned
-three specific techniques that you can use:
-
-+  Load Flat Files with `readr`.
-+  Load `SAS`, `SPSS`, `STATA` files with Haven.
-+  Query from databases with `dbplyr`.
-
-Generally I recommend that you load your data in a data frame in practice and all subsequent examples in this courses will use this method.
-
-## Next
-Now that you know how to load your data using in R  t is time to start looking at it. In the next lesson you will discover how to use simple descriptive statistics to better understand
-your data.
-
-
-## Exercises 
-
-1. Go through the previous steps using your own csv file
-2. Request rows of the surveys table in which weight is less than 5 and keep only the species_id, sex, and weight columns (filter, select and the %>% operator).
-
-
-
+If we type `lm.fit`, some basic information about the model is output.
+For more detailed information, we use `summary(lm.fit)`. This gives us `p-values`
+and standard errors for the coefficients, as well as the `R^2` statistic
+and `F-statistic`  for the model.
 
