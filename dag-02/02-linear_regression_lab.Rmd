@@ -122,8 +122,8 @@ Let's make predictions for the smallest and largest observed values of $x$, and 
 
 ```{r}
 options( warn = 1)
-ggplot() + geom_point(data = Advertising,aes(TV,sales), color = "blue") 
-
+coef.lrmod <- coef(lrmod)
+ggplot() + geom_point(data = Advertising,aes(TV,sales), color = "blue") +     geom_abline(intercept=coef.lrmod[1],slope=coef.lrmod[2])
 ```
 
 #### Plotting the Least Squares Line
