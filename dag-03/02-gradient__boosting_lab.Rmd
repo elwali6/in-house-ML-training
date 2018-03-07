@@ -1,0 +1,226 @@
+---
+title: "Lab: Gradient Boosting"
+author: "Hicham Zmarrou"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+___________________________________________________________________________________________________________
+
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='img/', echo=TRUE, warning=FALSE, message=FALSE,
+                      digits = 3)
+```
+
+
+## Preparation of Data for using XGBoost
+
+`XGBoost` only works with numeric vectors. Yes! you need to work on data types here.
+
+Therefore, you need to convert all other forms of data into numeric vectors. A simple method to convert categorical variable into numeric vector is One Hot Encoding. This term emanates from digital circuit language, where it means an array of binary signals and only legal values are 0s and 1s.
+
+In `R`, one hot encoding is quite easy. This step (shown below) will essentially make a sparse matrix using flags on every possible value of that variable. Sparse Matrix is a matrix where most of the values of zeros. Conversely, a dense matrix is a matrix where most of the values are non-zeros.
+
+```{r eval=FALSE, include=FALSE}
+library(Matrix)
+sparse_matrix <- sparse.model.matrix(response ~ .-1, data = Data)
+```
+
+## Building Model using Xgboost on R
+### Step 1: Load all the libraries
+
+```{r}
+suppressMessages(library(xgboost))
+suppressMessages(library(readr))
+suppressMessages(library(stringr))
+suppressMessages(library(caret))
+suppressMessages(library(car))
+```
+
+### Step 2: Load the dataset
+Load the data: The data from the Loan Prediction Challenge. You can download them from here: [train](https://drive.google.com/file/d/0B4wfKzAJl58HSHhUWF9zX0RfcEk/view?usp=sharing), [test](https://drive.google.com/file/d/0B4wfKzAJl58HUkxuTlRUZm9nbFE/view?usp=sharing).
+
+
+```{r}
+set.seed(100)
+df_train = read_csv("./data/train_users_2.csv")
+df_test = read_csv("./data/test_users.csv")
+```
+
+
+
+#### Load labels of the train data
+```{r}
+labels = df_train['Loan_Status']
+df_train = df_train[-grep('Loan_Status', colnames(df_train))]
+# Combine train and test data
+df_all = rbind(df_train,df_test)
+
+```
+
+
+### Step3: Data Cleaning & Feature Engineering
+ 
+The main purpose here is to deal with all the missing variables in the data. And also, creat dummy variable for the categorical features. (The missing value imputation here is arbitrary, without any validity.)
+
+```{r}
+df_all$Gender[is.na(df_all$Gender)] = "Male"
+df_all$Married[is.na(df_all$Married)] = "No"
+df_all$Self_Employed[is.na(df_all$Self_Employed)] = "No"
+
+df_all$LoanAmount[is.na(df_all$LoanAmount)] = mean(df_all$LoanAmount, na.rm = TRUE)
+df_all$Loan_Amount_Term[is.na(df_all$Loan_Amount_Term)] = 360
+df_all$Credit_History[is.na(df_all$Credit_History)] = 1
+df_all$Dependents[is.na(df_all$Dependents)] = 0
+```
+
+
+One-hot-encoding categorical features
+
+```{r}
+ohe_feats = c("Gender", "Married", "Education", "Self_Employed", "Property_Area")
+dummies <- dummyVars(~ Gender + Married + Education + Self_Employed + Property_Area, data = df_all)
+df_all_ohe <- as.data.frame(predict(dummies, newdata = df_all))
+df_all_combined <- cbind(df_all[,-c(which(colnames(df_all) %in% ohe_feats))],df_all_ohe)
+
+```
+Split train and test data set
+
+```{r}
+X = df_all_combined[df_all_combined$Loan_ID %in% df_train$Loan_ID,]
+y <- recode(labels$Loan_Status,"'Y'=1; 'N'=0")
+X_test = df_all_combined[df_all_combined$Loan_ID %in% df_test$Loan_ID,]
+```
+
+
+### Step 4: Tune and Run the model
+
+```{r}
+set.seed(100)
+xgb <- xgboost(data = data.matrix(X[,-1]), 
+ label = y, 
+ eta = 0.1,
+ max_depth = 15, 
+ nround=25, 
+ subsample = 0.5,
+ colsample_bytree = 0.5,
+ eval_metric = "merror",
+ objective = "multi:softprob",
+ num_class = 12,
+ nthread = 3
+)
+```
+
+### Step 5: Score the Test
+
+```{r}
+y_pred <- predict(xgb, data.matrix(X_test[,-1]))
+```
+
+
+### Step 6: Check the model
+
+Prints top 10 nodes of the model
+
+```{r}
+model <- xgb.dump(xgb, with_stats = T)
+model[1:10] 
+```
+
+Compute feature importance matrix
+
+```{r}
+names <- dimnames(data.matrix(X[,-1]))[[2]]
+importance_matrix <- xgb.importance(names, model = xgb)
+importance_matrix
+```
+Generate the imporance graph
+
+```{r}
+xgb.plot.importance(importance_matrix[1:10,])
+```
+### Parameters used in Xgboost
+
+* General parameters refers to which booster we are using to do boosting. The commonly used are tree or linear model
+
+* Booster parameters depends on which booster you have chosen
+
+* Learning Task parameters that decides on the learning scenario, for example, regression tasks may use different parameters with ranking tasks.
+
+#### General Parameters
+
+* __silent__ : The default value is 0. You need to specify 0 for printing running messages, 1 for silent mode. booster : The default value is gbtree. You need to specify the booster to use: gbtree (tree based) or gblinear (linear function).
+
+* __num_pbuffer__ : This is set automatically by xgboost, no need to be set by user. Read documentation of xgboost for more details.
+
+* __num_feature__ : This is set automatically by xgboost, no need to be set by user.
+
+#### Booster Parameters
+* __eta__ : The default value is set to 0.3. You need to specify step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features. and eta actually shrinks the feature weights to make the boosting process more conservative. The range is 0 to 1. Low eta value means model is more robust to overfitting.
+
+* __gamma__ : The default value is set to 0. You need to specify minimum loss reduction required to make a further partition on a leaf node of the tree. The larger, the more conservative the algorithm will be. The range is 0 to $+\infty$. Larger the gamma more conservative the algorithm is. max_depth : The default value is set to 6. You need to specify the maximum depth of a tree. The range is 1 to $+\infty$.
+
+* __min_child_weight__ : The default value is set to 1. You need to specify the minimum sum of instance weight(hessian) needed in a child. If the tree partition step results in a leaf node with the sum of instance weight less than min_child_weight, then the building process will give up further partitioning. In linear regression mode, this simply corresponds to minimum number of instances needed to be in each node. The larger, the more conservative the algorithm will be. The range is 0 to ???.
+
+* __max_delta_step__ : The default value is set to 0. Maximum delta step we allow each tree's weight estimation to be. If the value is set to 0, it means there is no constraint. If it is set to a positive value, it can help making the update step more conservative. Usually this parameter is not needed, but it might help in logistic regression when class is extremely imbalanced. Set it to value of 1-10 might help control the update.The range is 0 to ???.
+
+* __subsample__ : The default value is set to 1. You need to specify the subsample ratio of the training instance. Setting it to 0.5 means that XGBoost randomly collected half of the data instances to grow trees and this will prevent overfitting. The range is 0 to 1.
+
+* __colsample_bytree__ : The default value is set to 1. You need to specify the subsample ratio of columns when constructing each tree. The range is 0 to 
+
+### Linear Booster Specific Parameters
+
+* __lambda__ and  __alpha__ : These are regularization term on weights. Lambda default value assumed is 1 and alpha is 0.
+
+* __lambda_bias__ : L2 regularization term on bias and has a default value of 0.
+
+### Learning Task Parameters
+
+* __base_score__ : The default value is set to 0.5 . You need to specify the initial prediction score of all instances, global bias.
+
+* __objective__ : The default value is set to reg:linear . You need to specify the type of learner you want which includes linear regression, logistic regression, poisson regression etc.
+
+* __eval_metric__ : You need to specify the evaluation metrics for validation data, a default metric will be assigned according to objective( rmse for regression, and error for classification, mean average precision for ranking
+sessionInfo()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

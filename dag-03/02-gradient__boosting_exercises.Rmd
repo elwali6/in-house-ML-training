@@ -1,0 +1,54 @@
+---
+title: "ML Gradient boosting"
+subtitle: "Exercises and solutions"
+venue: ""
+author: "Hicham Zmarrou"
+date: " "
+output:
+  html_notebook:
+    highlight: pygments
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: FALSE
+---
+
+
+
+
+______________________________________________________________________________________________________________________________________
+
+
+
+
+## Exercise 1
+Load xgboost library and download [German Credit dataset](http://freakonometrics.free.fr/german_credit.csv). Your goal in this tutorial will be to predict Creditability (the first column in the dataset).
+
+
+## Exercise 2
+Convert columns `c(2,4,5,7,8,9,10,11,12,13,15,16,17,18,19,20)` to factors and then encode them as dummy variables. HINT: use `model.matrix()`
+
+## Exercise 3
+Split data into training and test set 700:300. Create xgb.DMatrix for both sets with Creditability as label.
+
+## Exercise 4
+Train `xgboost` with logistic objective and 30 rounds of training and maximal depth 2.
+
+## Exercise 5
+To check model performance calculate test set classification error.
+
+## Exercise 6
+Plot predictors importance.
+
+## Exercise 7
+Use `xgb.train()` instead of `xgboost()` to add both train and test sets as a watchlist. Train model with same parameters, but 100 rounds to see how it performs during training.
+
+## Exercise 8
+Train model again adding AUC and Log Loss as evaluation metrices.
+
+## Exercise 9
+Plot how AUC and Log Loss for train and test sets was changing during training process. Use plotting function/library of your choice.
+
+## Exercise 10
+Check how setting parameter eta to 0.01 influences the `AUC` and Log Loss curves.
+

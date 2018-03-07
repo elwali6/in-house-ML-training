@@ -1,0 +1,178 @@
+---
+title: "Seasonal-Trend decomposition using Loess (STL)"
+author: "Hicham Zmarrou"
+date: ""
+output:
+  ioslides_presentation:
+    standalone: no
+    transition: default
+    widescreen: yes
+  slidy_presentation: default
+recording: none
+subtitle: 
+css: styles.css
+type: invited
+venue: ITViate data science courses
+---
+
+```{r setup, echo = FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 4,
+  comment = "#>",
+  collapse = TRUE,
+  warning = FALSE
+)
+```
+
+
+        
+## Aims of this lesson 
+
++ Introduce you to some techniques for anomaly detection in time series
++ Give some application examples 
+
+
+## STL (Seasonal Trend decomposition using Loess) 
+
+
+ The core idea is that a time series can be decomposed into three components: seasonal, trend and remainder 
+ 
+ $$Y_t= T_t+S_t+R_t $$
+ 
+ Key to the STL approach is Loess (LOcal regrESSion) smoothing.
+ 
+ 
+## STL (Seasonal Trend decomposition using Loess) 
+ 
+
+
+* A window of a specified width is placed over the data. The wider the window, the smoother the resulting loess curve.
+
+* A regression line (or curve) is fitted to the observations that fall within the window, the points closest to the centre of the window being weighted to have the greatest effect on the calculation of the regression line.
+
+* The weighting is reduced on those points within the window that are furthest from the regression line. The regression is re-run and weights are again re-calculated. This process is repeated several times.
+
+* We thereby obtain a point on the loess curve. This is the point on the regression line at the centre of the window.
+
+* The loess curve is calculated by moving the window across the data. Each point on the resulting loess curve is the intersection of a regression line and a vertical line at the centre of such a window.
+
+To calculate a loess curve using `R`:
+
+## An Example
+
+First, we plot some sales data:
+
+```{r}
+
+sales<-c(39,  73,  41,  76,  75,  47,   4,  53,  40,  47,  31,  33,
+         58,  85,  61,  98,  90,  59,  34,  74,  78,  74,  56,  55,
+         91, 125,  96, 135, 131, 103,  86, 116, 117, 128, 113, 123)
+time.series <- ts(data=sales, frequency = 12, start=c(2000, 1), end=c(2002, 12))
+plot(time.series, xlab="Time", ylab="Sales (USD)", main="Widget Sales Over Time")
+```
+
+We apply `R`'s `stl()` function ("seasonal and trend decomposition using Loess") to the sales data:
+
+```{r}
+decomposed  <- stl(time.series, s.window="periodic")
+plot(decomposed)
+```
+
+
+## An Experiment
+How well does stl() extract trend and seasonality from data? We run three simple graphical investigations.
+
+Case 1: Strong seasonality and low, normally-distributed homoskedastic noise
+
+<div align="center">
+  <img src="img/stl01.png"  width="60%" height="60%"/> 
+</div>
+
+## An Experiment 
+
+#### The left side of each of the above images shows, from top to bottom:
+
+* Generated sales data.
+
+* The trend component from which the data was generated.
+
+* The seasonal component from which the data was generated.
+
+* The noise/remainder component from which the data was generated.
+
+#### The right side shows:
+
+* Generated sales data.
+
+* The trend component identified by `stl()`.
+
+* The seasonal component identified by `stl()`.
+
+* The noise/remainder component identified by `stl()`.
+
+Note the close match between the two trend components and between the two seasonal components. This indicates that `stl()` works well for this example.
+
+## An Experiment 
+
+Case 2: Weak seasonality and high, normally-distributed homoskedastic noise
+
+An experiment in decomposition by Loess of a time series showing weak seasonality and 
+high, normally-distributed homoskedastic noise
+
+<div align="center">
+  <img src="img/stl02.png"  width="60%" height="60%"/> 
+</div>
+
+Again, `stl()` appears to work quite well.
+
+## An Experiment  
+
+Case 3: Weak seasonality and high, normally-distributed heteroskedastic noise
+
+<div align="center">
+  <img src="img/stl03.png"  width="60%" height="60%"/> 
+</div>
+
+And stl() still seems to work fairly well. This is heartening, as it's common for the variance in a time series to increase as its mean rises-as is the case here.
+
+## How stl() Works
+
+When calling `stl()` with `s.window="periodic"` for this experiment (13 years sales data) , the seasonal component for January is simply the mean of all January values. Similarly, the seasonal component for February is simply the mean of all February values, etc. Otherwise, the seasonal component is calculated using loess smoothing (discussed below).
+
+Having calculated the seasonal component, the seasonally-adjusted data (the original data minus the seasonal component) is loess-smoothed to determine the trend.
+
+The remainder/noise is then the original data minus the seasonal and trend components.
+
+## How stl() Works 
+
+The `stl()` function is quite flexible:
+
+* The seasonality does not have to run across a year. 
+
+* Any period may be used for this.
+
+* The decomposition process can accommodate seasonality that changes over time.
+
+* A robust decomposition process is available that is less affected by outliers than is the default.
+
+## Loess Smoothing
+Loess ("locally-weighted scatterplot smoothing") uses local regression to remove variability from the data.
+
+* A window of a specified width is placed over the data. The wider the window, the smoother the resulting loess curve.
+
+* A regression line (or curve) is fitted to the observations that fall within the window, the points closest to the centre of the window being weighted to have the greatest effect on the calculation of the regression line.
+* The weighting is reduced on those points within the window that are furthest from the regression line. The regression is re-run and weights are again re-calculated. This process is repeated several times.
+* We thereby obtain a point on the loess curve. This is the point on the regression line at the centre of the window.
+
+* The loess curve is calculated by moving the window across the data. Each point on the resulting loess curve is the intersection of a regression line and a vertical line at the centre of such a window.
+
+## Loess Smoothing
+
+To calculate a loess curve using R:
+```{r}
+plot(cars$speed, cars$dist, main="Car Speed and Stopping Distance", xlab="Speed (mph)", ylab="Stopping Distance (ft)")
+lines(lowess(cars$speed, cars$dist), col="red")
+```
+

@@ -1,0 +1,142 @@
+---
+title: "ML Gradient boosting"
+subtitle: "Exercises and solutions"
+venue: ""
+author: "Hicham Zmarrou"
+date: " "
+output:
+  html_notebook:
+    highlight: pygments
+    theme: cosmo
+    toc: true
+    toc_float: true
+    number_sections: FALSE
+---
+
+
+
+
+______________________________________________________________________________________________________________________________________
+
+
+
+
+
+
+#    Exercise 1    #
+
+
+```{r}
+library(xgboost)
+
+url <- "http://freakonometrics.free.fr/german_credit.csv"
+credit <- read.csv(url, header = TRUE, sep = ",")
+```
+
+
+
+#    Exercise 2    #
+
+
+
+```{r}
+factor_columns <- c(2,4,5,7,8,9,10,11,12,13,15,16,17,18,19,20)
+for(i in factor_columns) credit[,i] <- as.factor(credit[,i])
+
+X <- model.matrix(~ . - Creditability, data=credit)
+```
+
+
+#    Exercise 3    #
+
+```{r}
+inTraining <- sample(1:nrow(credit),size=700)
+
+dtrain <- xgb.DMatrix(X[inTraining,], label=credit$Creditability[inTraining])
+dtest <- xgb.DMatrix(X[-inTraining,], label=credit$Creditability[-inTraining])
+```
+
+
+
+#    Exercise 4    #
+
+
+```{r}
+
+model <- xgboost(data = dtrain,
+                 max_depth = 2,
+                 nrounds = 30,
+                 objective = "binary:logistic")
+```
+
+
+#    Exercise 5    #
+
+
+```{r}
+err <- mean(round(predict(model, dtest)) != getinfo(dtest, 'label'))
+print(paste("test-error=", err))
+```
+
+
+#    Exercise 6    #
+
+```{r}
+importance.matrix <- xgb.importance(model = model, feature_names = colnames(X))
+xgb.plot.importance(importance.matrix)
+
+```
+#    Exercise 7    #
+
+
+```{r}
+model_watchlist <- xgb.train(data = dtrain,
+                             max_depth = 2,
+                             nrounds = 100,
+                             objective = "binary:logistic",
+                             watchlist = list(train=dtrain, test=dtest))
+```
+
+#    Exercise 8    #
+
+```{r}
+model_auc <- xgb.train(data = dtrain,
+                       max_depth = 2,
+                       nrounds = 100,
+                       objective = "binary:logistic",
+                       watchlist = list(train=dtrain, test=dtest),
+                       eval_metric = 'auc',
+                       eval_metric = 'logloss')
+```
+
+
+#    Exercise 9    #
+
+
+```{r}
+library(tidyverse)
+model_auc$evaluation_log %>%
+  gather(metric, value, -iter) %>%
+  separate(metric, c('set','metric')) %>%
+  ggplot(aes(iter, value, color = set)) +
+  geom_line() +
+  facet_grid(metric~.)
+```
+
+
+#    Exercise 10   #
+
+```{r}
+model_eta <- xgb.train(data = dtrain,
+                       max_depth = 2,
+                       eta = 0.05,
+                       nrounds = 100,
+                       objective = "binary:logistic",
+                       watchlist = list(train=dtrain, test=dtest),
+                       eval_metric = 'auc',
+                       eval_metric = 'logloss')
+
+```
+
+
+
