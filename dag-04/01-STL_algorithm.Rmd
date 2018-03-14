@@ -1,0 +1,293 @@
+---
+title: "Seasonal-Trend decomposition using Loess (STL)"
+author: "Hicham Zmarrou"
+date: ""
+output:
+  ioslides_presentation:
+    standalone: no
+    transition: default
+    widescreen: yes
+  slidy_presentation: default
+recording: none
+subtitle: 
+css: styles.css
+type: invited
+venue: ITViate data science courses
+---
+
+```{r setup, echo = FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 4,
+  comment = "#>",
+  collapse = TRUE,
+  warning = FALSE
+)
+```
+
+
+        
+## Aims of this lesson 
+
++ Introduce you to some techniques for anomaly detection in time series
++ Give some application examples 
+
+
+## STL (Seasonal Trend decomposition using Loess) 
+
+A time series refers to a set of observations collected sequentially in time. Let $x_t$ denote the observation at time $t$, where $t = 0, 1, 2,...$, and let X denote the set of all observations
+constituting the time series. The core idea of STL is that a time series can be decomposed into three components: seasonal, trend and remainder 
+ 
+ $$Y_t= T_t+S_t+R_t $$
+ 
+ Key to the STL approach is Loess (LOcal regrESSion) smoothing.
+ 
+ 
+## STL (Seasonal Trend decomposition using Loess) 
+ 
+
+
+* A window of a specified width is placed over the data. The wider the window, the smoother the resulting loess curve.
+
+* A regression line (or curve) is fitted to the observations that fall within the window, the points closest to the centre of the window being weighted to have the greatest effect on the calculation of the regression line.
+
+* The weighting is reduced on those points within the window that are furthest from the regression line. The regression is re-run and weights are again re-calculated. This process is repeated several times.
+
+* We thereby obtain a point on the loess curve. This is the point on the regression line at the centre of the window.
+
+* The loess curve is calculated by moving the window across the data. Each point on the resulting loess curve is the intersection of a regression line and a vertical line at the centre of such a window.
+
+To calculate a loess curve using `R`:
+
+## An Example
+
+First, we plot some sales data:
+
+```{r}
+
+sales<-c(39,  73,  41,  76,  75,  47,   4,  53,  40,  47,  31,  33,
+         58,  85,  61,  98,  90,  59,  34,  74,  78,  74,  56,  55,
+         91, 125,  96, 135, 131, 103,  86, 116, 117, 128, 113, 123)
+time.series <- ts(data=sales, frequency = 12, start=c(2000, 1), end=c(2002, 12))
+plot(time.series, xlab="Time", ylab="Sales (USD)", main="Widget Sales Over Time")
+```
+
+We apply `R`'s `stl()` function ("seasonal and trend decomposition using Loess") to the sales data:
+
+```{r}
+decomposed  <- stl(time.series, s.window="periodic")
+plot(decomposed)
+```
+
+
+## An Experiment
+How well does stl() extract trend and seasonality from data? We run three simple graphical investigations.
+
+Case 1: Strong seasonality and low, normally-distributed homoskedastic noise
+
+<div align="center">
+  <img src="img/stl01.png"  width="60%" height="60%"/> 
+</div>
+
+## An Experiment 
+
+#### The left side of each of the above images shows, from top to bottom:
+
+* Generated sales data.
+
+* The trend component from which the data was generated.
+
+* The seasonal component from which the data was generated.
+
+* The noise/remainder component from which the data was generated.
+
+#### The right side shows:
+
+* Generated sales data.
+
+* The trend component identified by `stl()`.
+
+* The seasonal component identified by `stl()`.
+
+* The noise/remainder component identified by `stl()`.
+
+Note the close match between the two trend components and between the two seasonal components. This indicates that `stl()` works well for this example.
+
+## An Experiment 
+
+Case 2: Weak seasonality and high, normally-distributed homoskedastic noise
+
+An experiment in decomposition by Loess of a time series showing weak seasonality and 
+high, normally-distributed homoskedastic noise
+
+<div align="center">
+  <img src="img/stl02.png"  width="60%" height="60%"/> 
+</div>
+
+Again, `stl()` appears to work quite well.
+
+## An Experiment  
+
+Case 3: Weak seasonality and high, normally-distributed heteroskedastic noise
+
+<div align="center">
+  <img src="img/stl03.png"  width="60%" height="60%"/> 
+</div>
+
+And stl() still seems to work fairly well. This is heartening, as it's common for the variance in a time series to increase as its mean rises-as is the case here.
+
+## How stl() Works
+
+When calling `stl()` with `s.window="periodic"` for this experiment (13 years sales data) , the seasonal component for January is simply the mean of all January values. Similarly, the seasonal component for February is simply the mean of all February values, etc. Otherwise, the seasonal component is calculated using loess smoothing (discussed below).
+
+Having calculated the seasonal component, the seasonally-adjusted data (the original data minus the seasonal component) is loess-smoothed to determine the trend.
+
+The remainder/noise is then the original data minus the seasonal and trend components.
+
+## How stl() Works 
+
+The `stl()` function is quite flexible:
+
+* The seasonality does not have to run across a year. 
+
+* Any period may be used for this.
+
+* The decomposition process can accommodate seasonality that changes over time.
+
+* A robust decomposition process is available that is less affected by outliers than is the default.
+
+## Loess Smoothing
+Loess ("locally-weighted scatterplot smoothing") uses local regression to remove variability from the data.
+
+* A window of a specified width is placed over the data. The wider the window, the smoother the resulting loess curve.
+
+* A regression line (or curve) is fitted to the observations that fall within the window, the points closest to the centre of the window being weighted to have the greatest effect on the calculation of the regression line.
+* The weighting is reduced on those points within the window that are furthest from the regression line. The regression is re-run and weights are again re-calculated. This process is repeated several times.
+* We thereby obtain a point on the loess curve. This is the point on the regression line at the centre of the window.
+
+* The loess curve is calculated by moving the window across the data. Each point on the resulting loess curve is the intersection of a regression line and a vertical line at the centre of such a window.
+
+## Loess Smoothing
+
+To calculate a loess curve using R:
+```{r}
+plot(cars$speed, cars$dist, main="Car Speed and Stopping Distance", xlab="Speed (mph)", ylab="Stopping Distance (ft)")
+lines(lowess(cars$speed, cars$dist), col="red")
+```
+
+
+
+# Seasonal ESD (S-ESD)
+
+## Grubbs Test and ESD
+
+These techniques employs time series decomposition `STL` to determine the seasonal component of a given time series. `S-ESD` then applies Extreme Studentized Deviate (ESD) on the resulting time series to detect the anomalies.
+
+### Grubbs Test
+
+__H0__ :There are no outliers in the data set   
+
+__H1__ :There is at least one outlier in the data set 
+
+
+The Grubbs' test statistic is defined as follows:
+
+$$ G = \frac{\max |x_t - \bar{x}|}{s}$$
+where, $\bar{x}$ and $s$ denote the mean and variance of the time series $X$.
+
+## Grubbs Test
+
+For the two-sided test, the hypothesis of no outliers is rejected at significance level $\alpha$ if
+
+$$
+G_{crit}>{\frac  {N-1}{{\sqrt  {N}}}}{\sqrt  {{\frac  {t_{{\alpha /(2N),N-2}}^{2}}{N-2+t_{{\alpha /(2N),N-2}}^{2}}}}}
+$$
+The largest data point in the time series that is greater than the test statistic is labeled as an anomaly.
+
+## ESD 
+Extreme Studentized Deviate (ESD) test is a generalization of Grubbs’ Test and handles more than one outlier. All you need to do is provide an upper bound on the number of potential outliers.
+`ESD` computes the following test statistic for the `k` most extreme values in the data set.
+
+We test the null hypothesis that the data has no outliers vs. the alternative hypothesis that there are at most k outliers (for some user specified value of k).
+
+__H0__ :There are no outliers in the data set   
+
+__H1__ :There are at most k outliers (for some user specified value of k)
+
+
+## ESD
+
+To test the data set $X$ with $n$ elements  we generate $k$ test statistics $G_1, G_2, .., G_k$ where each $G_j$ is a two-tailed Grubbs’ statistic, defined as follows:
+
+$$ S_1 = S$$
+$\bar{x_j}$ is the mean of $S_j$ and $s_j$ is the standard deviation of $S_j$ 
+
+$$
+G_j = \frac{\max \{|x_t - \bar{x_j}|, x_t \in S_j\}}{s_j}
+$$
+$S_{j+1} = S_j \smallsetminus  x_j$ where $x_j =$ the element  in $S_j$ such that $|x_j − x|$ is maximized
+
+## ESD
+
+Essentially you run $k$ separate Grubbs’ tests, testing whether $G_j > G_{j_{crit}}$  where $G_{j_{crit}}$ is $G_{crit}$ as described above, but adjusted for the correct value of the sample size; i.e. $n$ is replaced by $n − j + 1$. 
+
+Now let $r$ be the largest value of $j ≤ k$ such that $G_j > G_{j_{crit}}$. Then we conclude there are $r$ outliers, namely $x_1, …, x_r$. If $r = 0$ there are no outliers.
+
+Note that if $G_j > G_{j_{crit}}$ and $h < j$, then both $x_h$ and $x_j$ are outliers even if $G_h ≤ G_{h_{crit}}$.
+
+Example (Excel)
+
+## Seasonal ESD (S-ESD)
+
+* Many time series data exhibits heavy seasonality. 
+
+* In most cases, the underlying distribution exhibits a multimodal distribution. 
+
+* This limits the applicability of existing anomaly detection techniques such as Grubbs and ESD as the existing techniques assume a normal data distribution.
+
+* We use time series decomposition wherein a given time series $X$ is decomposed into three parts  seasonal $S_X$, trend $T_X$, and residual $R_X$
+
+* Seasonal ESD algorithm uses a modified STL decomposition to extract the residual component of the input time series and then applies ESD to the residuals to detect anomalies.
+
+* This two step process allows S-ESD to detect __both__ global and anomalies that extend beyond the expected seasonal minimum and maximum and local anomalies that would otherwise
+be masked by the seasonality.
+
+
+## Seasonal ESD (S-ESD)
+
+<div align="center">
+  <img src="img/stl04.png"  width="80%" height="80%"/> 
+</div>
+
+<div align="center">
+  <img src="img/stl05.png"  width="80%" height="80%"/> 
+</div>
+
+## Seasonal ESD (S-ESD)
+<div align="center">
+  <img src="img/stl06_algo1.png"  width="55%" height="55%"/> 
+</div>
+
+## S-ESD Limitations
+
+S-ESD does not perform well when applied to data sets that have a high percentage of anomalies. This is exemplied by Figure 8a wherein S-ESD does not capture
+the anomalies corresponding to the region highlighted by the red rectangle.
+
+<div align="center">
+  <img src="img/stl07.png"  width="100%" height="100%"/> 
+</div>
+
+
+## Seasonal Hybrid ESD (SHESD)
+
+* Use more robust statistical techniques and metrics during the calculation of the test statistic 
+
+* Use se the median and MAD, as these metrics exhibit a higher breakdown point
+
+<div align="center">
+  <img src="img/stl08.png"  width="50%" height="50%"/> 
+</div>
+
+
+

@@ -1,0 +1,260 @@
+---
+title: "Exercises Building a Movie Recommendation System"
+author: ""
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    highlight: pygments
+    number_sections: no
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  word_document:
+    toc: yes
+---
+
+
+Most of this material is borrowed from:
+
+* Textbook: [Building a Recommendation System with R](https://www.packtpub.com/big-data-and-business-intelligence/building-recommendation-system-r)
+
+
+----------------------------------------------------------------------------------------------------------------------------------------
+
+## Load Data
+Like many other R packages, `recommenderlab` contains some datasets that can be used to play around with the functions.
+In this lab, we will use the MovieLense dataset; the data is about movies. The table contains the ratings
+that the users give to movies. Let's load the data and take a look at it:
+
+```{r}
+set.seed(1)
+data_package <- data(package = "recommenderlab")
+data_package$results[, "Item"]
+data(MovieLense)
+class(MovieLense)
+
+1. Determine how similar the first four USERS are with each other
+
+2. Convert similarity_users class into a matrix and visualize it
+
+3. Examine the image and ensure you understand what it illustrates 
+
+4. Compute and visualize the similarity between the first four ITEMS
+
+5. Display the model applicable to the objects of type `realRatingMatrix` using `recommenderRegistry$get_entries`
+
+6. How many models are listed? 
+
+7. Describe these models
+
+We plan to use IBCF and UBCF. Check the parameters of these two models.
+
+8. List the parameters of these two model. What do they mean?
+
+Initial exploration of data types and dimensions
+
+```{r}
+dim(MovieLense) 
+slotNames(MovieLense)
+class(MovieLense@data) 
+```
+
+Exploring values of ratings
+
+```{r}
+vector_ratings <- as.vector(MovieLense@data)
+# what are unique values of ratings 
+unique(vector_ratings) 
+
+# what is the count of each rating value
+table_ratings <- table(vector_ratings)
+```
+
+9. Visualize the rating
+
+10. Examine the image and ensure you understand what it illustrates 
+
+Exploring viewings of movies
+
+```{r}
+views_per_movie <- colCounts(MovieLense) # count views for each movie 
+table_views <- data.frame(movie = names(views_per_movie), views = views_per_movie) # create dataframe of views 
+table_views <- table_views[order(table_views$views, decreasing = TRUE), ] # sort by number of views 
+ggplot(table_views[1:6, ], aes(x = movie, y = views)) + geom_bar(stat="identity") + 
+                          theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+						  ggtitle("Number of views of the top movies")
+```
+
+
+11. What are the top movies listed?
+
+Exploring average ratings:
+
+```{r}
+average_ratings <- colMeans(MovieLense) 
+qplot(average_ratings) + stat_bin(binwidth = 0.1) + ggtitle("Distribution of the average movie rating")
+```
+
+## In this part of the exercise, the goal will be to prepare the data set to be used in our recommender models. In these exercises we will accomplish this via the following:
+
+* Selection of relevant data
+* Normalization of the data
+
+Selection of Relevant data:
+
+The reason we explored the data was to get a sense of how and in what ways the data might influence a recommendation. A recommendation based on a small set of data points will not be very good. Now, when we explored the data previously, we noticed the following:
+* The movies that were viewed only a few times might result in biased ratings because of insufficient data
+* Ratings from users who rated only a few movies might also result in biased ratings.
+
+12. Define ratings_movies to contain the matrix (users who have rated at least 50 movies + movies that have been watched at least 100 times)
+
+13. Using the same approach as we did in the previous section, visualize the top 2 percent of users and movies in the new matrix
+
+14. Build the heat map, what do you observe?
+
+15. Visualize the distribution of the average rating by user
+
+16. Visualize the normalized matrix using the prebuilt normalize function
+
+17. Why is it colored?
+
+18. Why are there still some lines that are more blue and some that are more red?
+
+19. Why is normalization important here?
+
+Binarizing the data: Using the binarize function binarize for these two options
+
+20. Option 1: define a matrix equal to 1 if the movie has been watched
+
+21. Visualize 5% of users and movies using quantile by building a heatmap
+
+22. Option 2: define a matrix equal to 1 if the cell has a rating above the threshold (3)
+
+23. Visualize option 2 using the same approach and build the heat map.
+
+In this part, we have prepared the data to perform recommendations. In the next exercises, we will build collaborative filtering models.
+
+### ITEM-based Collaborative Filtering
+
+The starting point is a rating matrix in which rows correspond to users and columns correspond to items.
+
+Defining the training and test sets
+
+The two sets are as follows:
+
+* Training set: This set includes users from which the model learns
+* Test set: This set includes users to whom we recommend movies
+
+Use `ratings_movies` from the previous exercises. This is the subset of MovieLense users who have rated at least 50 movies and movies that have been rated at least 100 times.
+First, we randomly define the which_train vector that is TRUE for users in the training set and FALSE for the others. We will set the probability in the training set as 80 percent
+
+
+```{r}
+which_train <- sample(x = c(TRUE, FALSE), size = nrow(ratings_movies),replace = TRUE, prob = c(0.8, 0.2)) head(which_train)
+```
+
+Defining training/test sets
+24.  Define the training and test sets
+
+25.  Recommend items to each user, and use the k-fold:
+
+* Split the users randomly into five groups
+
+* Use a group as a test set and the other groups as training sets
+
+* Repeat it for each group
+
+## Building the recommendation model
+The function to build models is recommender and its inputs are as follows:
+
+*  Data: This is the training set
+
+* Method: This is the name of the technique
+
+*  Parameters: These are some optional parameters of the technique
+The model is called IBCF, which stands for item-based collaborative filtering. Let's take a
+
+look at its parameters:
+
+```{r}
+recommender_models <- recommenderRegistry$get_entries(dataType ="realRatingMatrix")
+recommender_models$IBCF_realRatingMatrix$parameters
+```
+
+26. Build the recommender model using default values
+27. How many users does the model learn with?
+28. Explore the recommender model using getModel
+	* Describe the model
+	* Structure of the similarity matrix
+	* What are the dimensions?
+29. Build a distribution chart
+30. Which movies have the most elements (top 6)?
+
+### Applying recommender system on the dataset:
+Define n_recommended that specifies the number of items to recommend to each user.
+This section will show you the most popular approach to computing a weighted sum:
+
+```{r}
+n_recommended <- 6 # the number of items to recommend to each user
+```
+For each user, the algorithm extracts its rated movies. For each movie, it identifies all its
+similar items, starting from the similarity matrix. Then, the algorithm ranks each similar
+item in this way:
+
+ Extract the user rating of each purchase associated with this item. The rating is
+used as a weight.
+
+* Extract the similarity of the item with each purchase associated with this item.
+
+* Multiply each weight with the related similarity.
+
+* Sum everything up. Then, the algorithm identifies the top n recommendations:
+
+31. Produce the object that contains the recommendations using n_recommend
+
+32. What is the structure?
+
+33. What are the slots obtained with slotNames(recommendation object obtained in (a))?
+
+34. What are the recommendations for the first user?
+
+35. Extract the movie names for the recommendation
+
+Hint
+	* items: This is the list with the indices of the recommended items for each user
+	* itemLabels: This is the name of the items
+	* n: This is the number of recommendations
+
+36. Define a matrix with the recommendations for each user
+
+37. Visualize the recommendations for the first four users
+
+38. Identify the most recommended movies
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

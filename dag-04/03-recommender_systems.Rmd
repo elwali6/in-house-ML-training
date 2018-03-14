@@ -1,0 +1,311 @@
+---
+title: "Recommender Systems"
+author: "Hicham Zmarrou"
+date: ""
+output:
+  ioslides_presentation:
+    standalone: no
+    transition: default
+    widescreen: yes
+  slidy_presentation: default
+recording: none
+subtitle: 
+css: styles.css
+type: invited
+venue: ITViate data science courses
+---
+
+```{r setup, echo = FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 4,
+  comment = "#>",
+  collapse = TRUE,
+  warning = FALSE
+)
+```
+
+
+## Recommender systems - introduction
+
+Motivation for talking about recommender systems:
+
+* Important application of ML systems
+
+* Many technology companies find recommender systems to be absolutely key 
+
+* Think about websites (Marktplaats, bol.com, Youtube, etc)
+
+* Try and recommend new content for you based on passed purchase
+
+* Improvement in recommender system performance can bring in more income
+
+* Kind of a funny problem
+
+* In academic learning, recommender systems receives a small amount of attention
+But in industry it's an absolutely crucial tool
+
+## Example - predict movie ratings
+
+* You're a company who sells movies
+
+* You let users rate movies using a 1-5 star rating
+
+* To make the example nicer, allow 0-5 (makes math easier)
+
+* You have five movies
+
+* And you have four users
+
+<div align="center">
+  <img src="img/rs01.png"  width="60%" height="60%"/> 
+</div>
+
+
+## Example - predict movie ratings
+
+Some notation
+
+* $n_u$ - Number of users (called ?nu occasionally as we can't subscript in superscript)
+
+* $n_m$ - Number of movies
+
+* $r_{(i, j)} = 1$  if user j has rated movie $i$ (i.e. bitmap)
+
+* $y_{(i,j)}$ - rating given by user $j$ to move $i$ (defined only if $r_{(i, j)} = 1$ )
+
+So for this example $n_u = 4$ $n_m = 5$
+
+## Summary of scoring
+
+* Alice and Bob gave good ratings to __romance__, but low scores to __action__ films
+
+* Carol and Dave game good ratings for __action__ films but low ratings for __romance__
+
+* We have the data given above, the problem is as follows
+
+Given $r_(i,j)$ and $y_{(i,j)}$ - go through and try and predict missing values (?s)
+Come up with a learning algorithm that can fill in these missing values
+
+
+## Content based recommendation
+Using our example above, how do we predict?
+
+Suppose that For each movie we have a feature which measure degree to which each film is a 
+
+*  Romance $x_1$; 
+
+*  Action $x_2$
+
+
+<div align="center">
+  <img src="img/rs02.png"  width="60%" height="60%"/> 
+</div>
+
+## Content based recommendation
+
+If we have features like these, each film can be recommended by a feature vector
+Add an extra feature which is $x_0 = 1$ for each film
+
+So for each film we have a $[3 \times 1]$ vector, which for film number 1 ("Love at Last") would be 
+$$
+  \begin{align}
+    \theta &= \begin{bmatrix}
+           1 \\
+           0.9 \\
+           0
+         \end{bmatrix}
+  \end{align}
+$$
+i.e. for our dataset we have $\{x^1, x^2, x^3, x^4, x^5\}$. Where each of these is a $[3 \times 1]$ vector with an $x_0 = 1$ and then a romance and an action score
+To be consistent with our notation, $n$ is going to be the number of features NOT counting the $x_0$ term, so $n = 2$.
+
+## Content based recommendation
+
+We could treat each rating for each user as a separate linear regression problem
+For each user $j$ we could learn a parameter vector. Then predict that user $j$ will rate movie $i$ with $θ_j^t.x_i = stars$ inner product of parameter vector and features.
+
+So, lets take user 1 (Alice) and see what she makes of the modern classic Cute Puppies of Love (CPOL)
+
+We have some parameter vector $θ^1$ associated with Alice $θ^1=\begin{bmatrix}0 \\ 5 \\ 0\end{bmatrix}$ 
+
+We'll explain later how we derived these values, but for now just take it that we have a vector
+
+## Content based recommendation
+
+CPOL has a parameter vector $x^3$ associated with it  $x^3 =\begin{bmatrix}0 \\ 5 \\ 0\end{bmatrix}$ 
+
+Our prediction will be equal to $(θ^{1})^t.x^3 = (0 * 1) + (5 * 0.99) + (0 * 0)  = 4.95$, Which may seem like a reasonable value
+
+All we're doing here is applying a linear regression method for each user So we determine a future rating based on their interest in romance and action based on previous films
+
+We should also add one final piece of notation: $m_j$, - Number of movies rated by the user $j$.
+
+## How do we learn $θ^j$
+
+Create some parameters which give values as close as those seen in the data when applied
+
+$$
+\min_{θ^j} \frac{1}{2 m^j} \sum_{i: r(i,j)=1}\big((θ^j)^t x^i - y^{(i,j)} \big)^2
+$$
+
+Sum over all values of i (all movies the user has used) when $r(i,j) = 1$ (i.e. all the films that the user has rated)
+
+To make this a little bit clearer you can get rid of the $m_j$ term (it's just a constant so shouldn't make any difference to minimization)
+
+
+$$
+\min_{θ^j} \frac{1}{2} \sum_{i: r(i,j)=1}\big((θ^j)^t x^i - y^{(i,j)} \big)^2
+$$
+
+## Content based recommendation 
+
+But for our recommender system we want to learn parameters for all users, so we add an extra summation term to this which means we determine the minimum $θ^j$ value for every user
+
+$$
+\min_{θ^1,...,θ^{n_u}} \frac{1}{2} \sum_{1}^{n_u}\sum_{i: r(i,j)=1}\big((θ^j)^t x^i - y^{(i,j)} \big)^2
+$$
+When we do this as a function of each $θ^j$ parameter vector you get the parameters for each user
+So this is our optimization objective -> $J(θ^1, ..., θ^{n_u})$ 
+
+In order to do the minimization we have the gradient descent technique.
+
+This approach is called content-based approach because we assume we have features regarding the content which will help us identify things that make them appealing to a user
+However, often such features are not available - next we discuss a non-contents based approach!
+
+## Collaborative filtering - overview
+
+* The collaborative filtering algorithm has a very interesting property - does feature learning i.e. it can learn for itself what features it needs to learn
+
+* Recall our original data set above for our five films and four raters
+
+* Here we assume someone had calculated the "romance" and "action" amounts of the films This can be very hard to do in reality
+
+* Often we want more features than just two So - let's change the problem and pretend we have a data set where we don't know any of the features associated with the films
+
+## Collaborative filtering - overview
+
+<div align="center">
+  <img src="img/rs03.png"  width="100%" height="100%"/> 
+</div>
+
+## Collaborative filtering - overview
+
+Now let's make a different assumption
+
+* We've polled each user and found out how much each user likes 
+
+* Romantic films
+
+* Action films
+
+Which has generated the following parameter set
+
+$$\theta^1 =\begin{bmatrix}0 \\ 5 \\ 0\end{bmatrix}; \theta^2 =\begin{bmatrix}0 \\ 5 \\ 0\end{bmatrix};\theta^3 =\begin{bmatrix}0 \\ 0 \\ 5\end{bmatrix};\theta^4 =\begin{bmatrix}0 \\ 0 \\ 5\end{bmatrix}$$
+Alice and Bob like romance but hate action. Carol and Dave like action but hate romance.
+If we can get these parameters from the users we can infer the missing values from our table
+
+## Collaborative filtering - overview 
+
+Lets look at "Love at Last"
+
+* Alice and Bob loved it
+
+* Carol and Dave hated it
+
+We know from the feature vectors Alice and Bob love romantic films, while Carol and Dave hate them
+Based on the factor Alice and Bob liked "Love at Last" and Carol and Dave hated it we may be able to (correctly) conclude that "Love at Last" is a romantic film
+
+
+We know from the feature vectors Alice and Bob love romantic films, while Carol and Dave hate them
+
+* Based on the factor Alice and Bob liked "Love at Last" and Carol and Dave hated it we may be able to (correctly) conclude that "Love at Last" is a romantic film
+
+## Collaborative filtering - overview 
+
+This is a bit of a simplification in terms of the maths, but what we're really asking is: What feature vector should $x_1$ be so that: 
+
+* $(θ^1)^t.x^1$ is about 5
+
+* $(θ^2)^t.x^1$ is about 5
+
+* $(θ^3)^t.x^1$ is about 0
+
+* $(θ^4)^t.x^1$ is about 0 
+
+From this we can guess that $x_1$ may be $x_1 = \begin{bmatrix}0 \\ 1.0\\ 0\end{bmatrix}$ 
+
+Using that same approach we should then be able to determine the remaining feature vectors for the other films
+
+## Formalizing the collaborative filtering problem
+
+We can more formally describe the approach as follows: 
+
+Given $(\theta_1, ..., \theta_{n_u})$ (i.e. given the parameter vectors for each users' preferences), we should minimize an optimization function which tries to identify the best parameter vector associated with a film
+
+$$
+\min_{x^i} \frac{1}{2} \sum_{i: r(i,j)=1}\big((θ^j)^t x^i - y^{(i,j)} \big)^2
+$$ 
+
+So we're summing over all the indices $j$ for where we have data for movie $i$
+
+We're minimizing this squared error 
+
+Like before, the above equation gives us a way to learn the features for one film
+We want to learn all the features for all the films - so we need an additional summation term
+
+## How does this work with the previous recommendation system
+
+* Content based recommendation systems: We saw that if we have a set of features for movie rating you can learn a user's preferences
+
+* Now: If you have your users preferences you can therefore determine a film's features
+
+* This is a bit of a chicken & egg problem
+
+* What we can do is
+
+ a. Randomly guess values for $\theta$
+ 
+ b. Then use collaborative filtering to generate $x$
+
+ c. Then use content based recommendation to improve $\theta$
+ 
+ d. Use that to improve $x$, and so on
+
+## How does this work with the previous recommendation system 
+
+* This actually works
+
+* Cause the  algorithm to converge on a reasonable set of parameters 
+
+* This is collaborative filtering
+
+* We call it collaborative filtering because in this example the users are collaborating together to help the algorithm learn better features and help the system and the other users
+
+## Collaborative filtering Algorithm
+
+Here we combine the ideas from before to build a collaborative filtering algorithm. Our starting point is as follows
+
+If we're given the film's features we can use that to work out the users' preference
+
+<div align="center">
+  <img src="img/rs05.png"  width="60%" height="60%"/> 
+</div>
+
+
+## Collaborative filtering Algorithm
+
+If we're given the users' preferences we can use them to work out the film's features
+
+<div align="center">
+  <img src="img/rs06.png"  width="60%" height="60%"/> 
+</div>
+
+
+One thing we could do is
+
+* Randomly initialize parameter
+
+* Go back and forward
+
